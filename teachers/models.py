@@ -7,8 +7,8 @@ class Teacher(models.Model):
     last_name = models.CharField(max_length=30)
     email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=15, blank=True)
-    subject = models.CharField(max_length=50)
     hire_date = models.DateField()
+    subjects = models.ManyToManyField('Subject', related_name='teachers')
 
     def clean(self):
         # Verificação de número de telefone
@@ -20,7 +20,6 @@ class Teacher(models.Model):
 
 class Subject(models.Model):
     name = models.CharField(max_length=50, unique=True)
-    teachers = models.ManyToManyField(Teacher, related_name='subjects')
-
+    
     def __str__(self):
         return self.name

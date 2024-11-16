@@ -5,6 +5,7 @@ from .models import Student
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django import forms
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StudentListView(View):
@@ -55,69 +56,32 @@ class StudentCreateView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class StudentDetailView(View):
-    # Ver detalhes de um estudante específico, atualizar e deletar
+    # Método GET: Exibir os detalhes de um estudante específico
     def get(self, request, student_id):
         student = get_object_or_404(Student, id=student_id)
         data = {
             'id': student.id,
             'first_name': student.first_name,
             'last_name': student.last_name,
-            'date_of_birth': student.date_of_birth,
             'email': student.email,
-            'courses': list(student.courses.values_list('name', flat=True)),  # Listar cursos matriculados
+            'date_of_birth': student.date_of_birth,
+            'courses': list(student.courses.values_list('name', flat=True)) 
         }
         return JsonResponse(data)
-
+    
+    
     def put(self, request, student_id):
         student = get_object_or_404(Student, id=student_id)
-        data = json.loads(request.body)
-
-        # Validação manual
-        errors = {}
+        data = json.loads(request.body)  
+    
+        form = StudentForm(data, instance=student) 
         
-        # Validação somente se o campo estiver presente na requisição
-        if 'first_name' in data:
-            if data['first_name'] == "":
-                errors['first_name'] = "Este campo não pode ser vazio."
-
-        if 'last_name' in data:
-            if data['last_name'] == "":
-                errors['last_name'] = "Este campo não pode ser vazio."
-
-        if 'email' in data:
-            if data['email'] == "":
-                errors['email'] = "Este campo não pode ser vazio."
-            elif Student.objects.exclude(id=student_id).filter(email=data['email']).exists():
-                errors['email'] = "Este email já está cadastrado."
-
-        if 'date_of_birth' in data:
-            if data['date_of_birth'] == "":
-                errors['date_of_birth'] = "Este campo não pode ser vazio."
-
-        # Validação simples para cursos (se necessário)
-        if 'courses' in data and not isinstance(data['courses'], list):
-            errors['courses'] = "Cursos devem ser uma lista."
-
-        if errors:
-            return JsonResponse(errors, status=400)
-
-        # Atualizar apenas os campos fornecidos
-        if 'first_name' in data:
-            student.first_name = data['first_name']
-        if 'last_name' in data:
-            student.last_name = data['last_name']
-        if 'email' in data:
-            student.email = data['email']
-        if 'date_of_birth' in data:
-            student.date_of_birth = data['date_of_birth']
-        
-        student.save()
-
-        # Atualizando cursos se fornecido
-        if 'courses' in data:
-            student.courses.set(data['courses'])
-
-        return JsonResponse({'id': student.id}, status=200)
+        if form.is_valid():
+            student = form.save()  # Salva as alterações
+            return JsonResponse({'id': student.id}, status=200)
+        else:
+            
+            return JsonResponse(form.errors, status=400)
 
     def delete(self, request, student_id):
         student = get_object_or_404(Student, id=student_id)
